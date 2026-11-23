@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Inventario</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ══════════════ HEADER ══════════════ -->
+  <header class="header">
+    <div class="header__inner">
+      <div class="header__brand">
+        <div class="header__icon-box">INV</div>
+        <div>
+          <h1 class="header__title">Sistema de Inventario</h1>
+          <p class="header__sub">API REST · Spring Boot · MySQL</p>
+        </div>
+      </div>
+      <div class="header__status">
+        <span id="statusDot" class="status-dot status-dot--unknown"></span>
+        <span id="statusLabel" class="status-label">Verificando...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════ MAIN ══════════════ -->
+  <main class="main">
+
+    <!-- Tarjetas KPI -->
+    <section class="kpi-row">
+      <div class="kpi-card kpi-card--blue">
+        <div class="kpi-card__icon-box kpi-card__icon-box--blue">DB</div>
+        <div>
+          <p class="kpi-card__label">Total Registros</p>
+          <p class="kpi-card__value" id="kpiTotal">—</p>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--green">
+        <div class="kpi-card__icon-box kpi-card__icon-box--green">PG</div>
+        <div>
+          <p class="kpi-card__label">Página Actual</p>
+          <p class="kpi-card__value" id="kpiPage">—</p>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--purple">
+        <div class="kpi-card__icon-box kpi-card__icon-box--purple">TP</div>
+        <div>
+          <p class="kpi-card__label">Total Páginas</p>
+          <p class="kpi-card__value" id="kpiPages">—</p>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--orange">
+        <div class="kpi-card__icon-box kpi-card__icon-box--orange">PP</div>
+        <div>
+          <p class="kpi-card__label">Por Página</p>
+          <p class="kpi-card__value" id="kpiSize">—</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel de Búsqueda por ID -->
+    <section class="card">
+      <div class="card__header">
+        <h2 class="card__title">Buscar por ID</h2>
+      </div>
+      <div class="card__body search-row">
+        <div class="form-group">
+          <label class="form-label" for="searchId">ID del Inventario</label>
+          <input id="searchId" class="form-input" type="number" min="1" placeholder="Ej: 1" />
+        </div>
+        <button class="btn btn--primary" onclick="buscarPorId()">
+          Buscar
+        </button>
+      </div>
+
+      <!-- Resultado búsqueda -->
+      <div id="searchResult" class="search-result hidden"></div>
+    </section>
+
+    <!-- Panel de Inventario Paginado -->
+    <section class="card">
+      <div class="card__header">
+        <h2 class="card__title">Inventario Completo</h2>
+        <div class="card__actions">
+          <div class="form-group-inline">
+            <label class="form-label" for="pageSize">Por página</label>
+            <select id="pageSize" class="form-select" onchange="cambiarSize()">
+              <option value="5">5</option>
+              <option value="10" selected>10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+          </div>
+          <button class="btn btn--outline" onclick="cargarInventario()">
+            Actualizar
+          </button>
+        </div>
+      </div>
+
+      <div class="card__body">
+        <!-- Tabla -->
+        <div class="table-wrapper">
+          <table class="table" id="inventarioTable">
+            <thead>
+              <tr>
+                <th>ID Inventario</th>
+                <th>ID Producto</th>
+                <th>Cantidad</th>
+                <th>Stock Mínimo</th>
+                <th>Stock Máximo</th>
+                <th>Estado Stock</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="inventarioBody">
+              <tr>
+                <td colspan="7" class="table__empty">
+                  <div class="spinner"></div>
+                  <p>Cargando datos...</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación -->
+        <div class="pagination" id="paginationContainer">
+          <button class="page-btn" id="btnFirst" onclick="irPrimera()" title="Primera página">&laquo;</button>
+          <button class="page-btn" id="btnPrev"  onclick="paginaAnterior()" title="Página anterior">&lsaquo;</button>
+          <span class="page-info" id="pageInfo">— / —</span>
+          <button class="page-btn" id="btnNext"  onclick="paginaSiguiente()" title="Página siguiente">&rsaquo;</button>
+          <button class="page-btn" id="btnLast"  onclick="irUltima()" title="Última página">&raquo;</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══════════════ TOAST NOTIFICATION ══════════════ -->
+  <div id="toast" class="toast hidden">
+    <span id="toastIcon" class="toast__icon"></span>
+    <span id="toastMsg"></span>
+  </div>
+
+  <!-- ══════════════ MODAL CONFIRMAR ELIMINACIÓN ══════════════ -->
+  <div id="modalOverlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal__icon-box">DEL</div>
+      <h3 class="modal__title">Confirmar Eliminación</h3>
+      <p class="modal__body">¿Estás seguro de que deseas eliminar el inventario con ID <strong id="modalId"></strong>?<br>Esta acción no se puede deshacer.</p>
+      <div class="modal__actions">
+        <button class="btn btn--outline" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn btn--danger" onclick="confirmarEliminacion()">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
